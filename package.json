@@ -1,0 +1,10 @@
+{
+  "name": "luna-12-shadow-crater",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "플레이 가능한 정적 3D 달 탐사 로버 웹게임",
+  "scripts": {
+    "start": "python3 -m http.server 4187"
+  }
+}

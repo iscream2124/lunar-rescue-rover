@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#06090e">
+  <title>LUNA-12: 그림자 분화구</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main id="game" aria-label="LUNA-12 달 탐사 로버 게임">
+    <canvas id="scene"></canvas>
+    <div class="vignette"></div>
+
+    <section id="start" class="modal">
+      <div class="panel hero">
+        <div class="eyebrow">LUNAR RESCUE PROGRAM · 2041</div>
+        <h1>LUNA-12<br><span>그림자 분화구</span></h1>
+        <p>영구 음영 지대에서 얼음 신호를 확보하고 통신 비콘을 설치하십시오.</p>
+        <button id="startBtn" class="primary">임무 시작</button>
+        <button id="continueBtn" class="ghost hidden">저장 지점에서 계속</button>
+        <div class="start-controls"><b>조종</b> WASD / 방향키 · <b>제동</b> Space · <b>행동</b> E 길게 누르기 · <b>안내</b> H</div>
+      </div>
+    </section>
+
+    <section id="ending" class="modal hidden">
+      <div class="panel ending-panel">
+        <div class="success-ring">✓</div>
+        <div class="eyebrow">MISSION COMPLETE</div>
+        <h2>빙하 신호 전송 완료</h2>
+        <p>라그랑주 중계망이 LUNA-12의 표본 데이터를 수신했습니다.<br>달 남극 유인 기지의 다음 좌표가 확보되었습니다.</p>
+        <div class="mission-time">임무 시간 <strong id="finalTime">00:00</strong></div>
+        <button id="restartBtn" class="primary">새 임무 시작</button>
+      </div>
+    </section>
+
+    <header id="topbar" class="hud hidden">
+      <div class="brand"><span class="dot"></span><b>LUNA-12</b><small>ROVER ONLINE</small></div>
+      <button id="helpBtn" class="icon-btn" aria-label="조작 도움말">?</button>
+    </header>
+
+    <aside id="mission" class="hud mission-card hidden">
+      <div class="eyebrow">CURRENT OBJECTIVE</div>
+      <div class="stage-count"><span id="stageNum">01</span> / 03</div>
+      <h2 id="missionTitle">스캔 구역으로 이동</h2>
+      <p id="missionText">표시된 구역에 로버를 진입시키십시오.</p>
+      <div class="distance"><span>목표 거리</span><strong id="distance">-- m</strong></div>
+    </aside>
+
+    <aside id="telemetry" class="hud telemetry hidden">
+      <div class="gauge"><span>속도</span><strong id="speed">0.0</strong><small>m/s</small></div>
+      <div class="battery"><div><span>BATTERY</span><strong id="batteryText">100%</strong></div><div class="bar"><i id="batteryBar"></i></div></div>
+    </aside>
+
+    <div id="minimap" class="hud minimap hidden"><canvas id="mapCanvas" width="170" height="170"></canvas><span>N</span></div>
+    <div id="objectiveArrow" class="hud arrow hidden">▲<small id="arrowDistance">0m</small></div>
+
+    <div id="actionWrap" class="hud action hidden">
+      <button id="actionBtn"><span id="actionLabel">E 길게 눌러 스캔</span><i id="actionProgress"></i></button>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <div id="touch" class="hidden">
+      <div class="touch-drive"><button data-key="ArrowUp">▲</button><div><button data-key="ArrowLeft">◀</button><button data-key="ArrowDown">▼</button><button data-key="ArrowRight">▶</button></div></div>
+      <button id="touchAction" class="touch-action">행동</button>
+    </div>
+
+    <section id="help" class="modal hidden">
+      <div class="panel help-panel"><button id="closeHelp" class="close">×</button><div class="eyebrow">ROVER MANUAL</div><h2>조작 안내</h2><div class="key-grid"><kbd>W / ↑</kbd><span>전진</span><kbd>S / ↓</kbd><span>후진</span><kbd>A D / ← →</kbd><span>조향</span><kbd>SPACE</kbd><span>제동</span><kbd>E (길게)</kbd><span>목표 행동</span></div><p>노란 표식을 따라가십시오. 배터리가 소진되면 비상 전력으로 마지막 안전 지점에 복귀합니다.</p></div>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
