@@ -28,6 +28,7 @@ ES modules 보안 정책 때문에 `index.html`을 파일로 직접 열지 말�
 브라우저 콘솔에서 `window.__LUNA12__`를 사용할 수 있습니다.
 
 - `getState()` — 직렬화 가능한 현재 상태
+- `getRoverDebug()` — 6개 휠의 회전·조향·서스펜션 상태와 렌더링 설정
 - `teleportToObjective()` — 현재 목표 근처로 이동 (자동 완료하지 않음)
 - `performObjective()` — 목표 범위 안에서 현재 행동을 완료
 - `setBattery(number)` — 배터리 테스트
@@ -35,4 +36,4 @@ ES modules 보안 정책 때문에 `index.html`을 파일로 직접 열지 말�
 
 ## 기술/자산
 
-원본 게임 코드, 절차적 로우폴리 지형, 별, 로버 모델 및 UI로 구성됩니다. 외부 이미지·폰트·음원은 사용하지 않습니다. Three.js r160 ES module만 로컬에 포함했습니다. 자세한 고지는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 참고하세요.
+원본 게임 코드, 절차적 로우폴리 지형, 별, 6륜 로커-보기 로버 모델 및 UI로 구성됩니다. 로버는 공유 지오메트리 기반 휠/그라우저, 가동 조향·서스펜션, 절차적 금박 텍스처, 태양전지판, 고이득 안테나와 과학 장비를 런타임에 생성합니다. 외부 이미지·폰트·음원은 사용하지 않습니다. Three.js r160 ES module만 로컬에 포함했습니다. 자세한 고지는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 참고하세요.
