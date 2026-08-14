@@ -1,20 +1,138 @@
 import * as THREE from './vendor/three/three.module.js';
 
 const $ = (s) => document.querySelector(s);
-const SAVE_KEY = 'luna12-save-v1';
+const SAVE_KEY = 'luna12-science-save-v2';
+const SAVE_VERSION = 2;
+const AUDIO_MUTE_KEY = 'luna12-audio-muted';
 const WORLD = 210;
-const objectives = [
-  { name: '스캔 구역으로 이동', detail: '노란 표식 안에서 E를 길게 눌러 얼음 신호를 탐색하십시오.', action: '얼음 신호 스캔', x: -54, z: -38, radius: 10, hold: 2.2 },
-  { name: '빙하 표본 지점으로 이동', detail: '청록색 신호원에서 코어 드릴을 가동하십시오.', action: '코어 시추', x: 61, z: -63, radius: 8, hold: 2.6 },
-  { name: '중계 지점으로 이동', detail: '능선 위의 중계점에 통신 비콘을 설치하십시오.', action: '비콘 설치', x: 70, z: 66, radius: 9, hold: 2.4 }
+const DRIVE = Object.freeze({ normalMax: 24, boostMax: 30, reverseMax: 10, acceleration: 14, boostAcceleration: 18, reverseAcceleration: 10, brakeStrength: .48 });
+const missions = [
+  {
+    title: '충돌 분화구 발견', phenomenon: '충돌 지형학',
+    briefing: '고속으로 날아온 천체가 달 표면에 충돌하면 물질이 파여 둥근 함몰부와 솟은 테두리가 생깁니다. 밖으로 튀어나간 암석과 먼지는 분출물로 주변에 쌓여 충돌의 흔적을 남깁니다.',
+    task: '신선한 분화구 가장자리에 도착해 E를 길게 눌러 파노라마·LiDAR 조사를 수행하세요.',
+    observation: '함몰부, 융기된 테두리, 바깥쪽 분출물 지형을 확인했습니다.',
+    action: '파노라마·LiDAR 조사', x: -58, z: -65, radius: 9, hold: 2.4,
+    sourceLabel: 'NASA Science · Moon Craters', sourceUrl: 'https://science.nasa.gov/moon/lunar-craters/'
+  },
+  {
+    title: '영구 음영 지역과 물얼음', phenomenon: '극지 콜드 트랩',
+    briefing: '달 극지의 일부 분화구 바닥은 태양빛이 거의 또는 전혀 닿지 않아 매우 낮은 온도가 유지됩니다. 이런 영구 음영 지역은 콜드 트랩이 되어 물얼음이 오랫동안 남아 있을 수 있습니다.',
+    task: '어두운 분화구 바닥으로 진입해 E를 길게 눌러 레이더·열 조사를 수행하세요.',
+    observation: '낮은 온도의 음영 지대에서 물과 관련된 레이더 반사 후보를 기록했습니다.',
+    action: '레이더·열 조사', x: -30, z: 25, radius: 10, hold: 2.6,
+    sourceLabel: 'NASA Science · LCROSS', sourceUrl: 'https://science.nasa.gov/mission/lcross/'
+  },
+  {
+    title: '표토와 충돌 교란', phenomenon: '임팩트 가드닝',
+    briefing: '반복되는 미세 운석 충돌은 달 표면의 암석을 부수어 고운 표토를 만들고 위아래 물질을 섞습니다. 층을 보존한 코어 시료는 서로 다른 시기의 퇴적과 교란 기록을 읽는 데 도움이 됩니다.',
+    task: '표토 표본 지점에서 E를 길게 눌러 층상 코어를 시추하세요.',
+    observation: '입자 크기와 색이 다른 표토층을 보존한 코어 시료를 확보했습니다.',
+    action: '층상 코어 시추', x: 45, z: -8, radius: 8, hold: 2.8,
+    sourceLabel: 'NASA Science · Moon Composition', sourceUrl: 'https://science.nasa.gov/moon/composition/'
+  },
+  {
+    title: '월진과 달 내부', phenomenon: '달 지진학',
+    briefing: '아폴로 우주비행사가 설치한 지진계는 월진과 충돌로 생긴 진동을 기록했습니다. 지진파가 달 내부를 통과하며 달라지는 방식은 지각과 맨틀 같은 내부 구조를 추정하는 단서가 됩니다.',
+    task: '평탄하고 안정된 지점에서 E를 길게 눌러 지진계를 전개하세요.',
+    observation: '안정된 지반에 지진계를 설치해 달 내부를 통과할 진동의 관측점을 마련했습니다.',
+    action: '지진계 전개', x: 85, z: 15, radius: 8, hold: 2.5,
+    sourceLabel: 'NASA Science · Apollo와 월진', sourceUrl: 'https://science.nasa.gov/solar-system/moon/nasas-apollo-samples-lro-help-scientists-forecast-moonquakes/'
+  },
+  {
+    title: '달 뒷면 통신', phenomenon: '가시선과 중계',
+    briefing: '달 자체가 전파의 가시선을 가리기 때문에 뒷면의 탐사기는 지구와 직접 통신할 수 없습니다. 달 너머와 지구를 모두 볼 수 있는 중계 위성이나 중계 지점이 신호를 이어 주어야 합니다.',
+    task: '높은 능선에 도착해 E를 길게 눌러 통신 중계 비콘을 전개하세요.',
+    observation: '능선 비콘이 중계망과 연결되어 뒷면 탐사 자료의 통신 경로를 확보했습니다.',
+    action: '중계 비콘 전개', x: 70, z: 66, radius: 9, hold: 2.7,
+    sourceLabel: 'NASA NTRS · Lunar far-side communication satellites', sourceUrl: 'https://ntrs.nasa.gov/citations/19680015886'
+  }
 ];
-const state = { started: false, complete: false, stage: 0, battery: 100, speed: 0, heading: 0, elapsed: 0, actionProgress: 0, failSafes: 0 };
-let scene, camera, renderer, rover, marker, markerBeam, clock, lastSave = 0;
+const state = { started: false, complete: false, stage: 0, battery: 100, speed: 0, heading: 0, elapsed: 0, actionProgress: 0, failSafes: 0, discoveries: Array(5).fill(false), briefingOpen: false, codexOpen: false, transitioning: false, boosting: false };
+let scene, camera, renderer, rover, marker, markerBeam, markerRing, actionPulse, clock, lastSave = 0;
 let roverRig = null;
-let actionHeld = false, toastTimer = 0;
-const keys = Object.create(null), boulders = [], wheels = [];
+let actionHeld = false, toastTimer = 0, transitionTimer = 0;
+const keys = Object.create(null), boulders = [], wheels = [], scienceSites = [];
 const map = $('#mapCanvas'), mapCtx = map.getContext('2d');
 const cameraGoal = new THREE.Vector3(), cameraLook = new THREE.Vector3();
+
+const audio = {
+  supported: !!(window.AudioContext || window.webkitAudioContext), initialized: false,
+  muted: localStorage.getItem(AUDIO_MUTE_KEY) === 'true', context: null, master: null,
+  motorOsc: null, motorGain: null, motorFilter: null, wheelNoise: null, wheelGain: null,
+  actionOsc: null, actionGain: null, activeSfx: new Set()
+};
+
+function audioTime(){return audio.context?.currentTime || 0;}
+function setAudioParam(param,value,ramp=.04){
+  if(!param||!audio.context)return;
+  const t=audioTime();param.cancelScheduledValues(t);param.setValueAtTime(param.value,t);param.linearRampToValueAtTime(value,t+ramp);
+}
+function makeNoiseBuffer(seconds=2){
+  const length=Math.max(1,Math.floor(audio.context.sampleRate*seconds)),buffer=audio.context.createBuffer(1,length,audio.context.sampleRate),data=buffer.getChannelData(0);
+  for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(.55+.45*Math.sin(i*.017));
+  return buffer;
+}
+function updateSoundButton(){
+  const button=$('#soundBtn');if(!button)return;
+  const on=audio.supported&&!audio.muted;button.textContent=on?'소리 켜짐':'소리 꺼짐';button.setAttribute('aria-label',on?'효과음 끄기':'효과음 켜기');button.setAttribute('aria-pressed',String(on));button.classList.toggle('muted',!on);
+}
+function initAudio(){
+  if(!audio.supported)return false;
+  try{
+    if(audio.initialized){if(audio.context.state==='suspended')audio.context.resume();return true;}
+    const AudioContextClass=window.AudioContext||window.webkitAudioContext,ctx=new AudioContextClass();audio.context=ctx;
+    const master=ctx.createGain();master.gain.value=audio.muted?0:.42;master.connect(ctx.destination);audio.master=master;
+    const motorFilter=ctx.createBiquadFilter();motorFilter.type='lowpass';motorFilter.frequency.value=520;motorFilter.Q.value=.8;motorFilter.connect(master);audio.motorFilter=motorFilter;
+    const motorGain=ctx.createGain();motorGain.gain.value=0;motorGain.connect(motorFilter);audio.motorGain=motorGain;
+    const motorOsc=ctx.createOscillator();motorOsc.type='triangle';motorOsc.frequency.value=48;motorOsc.connect(motorGain);motorOsc.start();audio.motorOsc=motorOsc;
+    const wheelFilter=ctx.createBiquadFilter();wheelFilter.type='bandpass';wheelFilter.frequency.value=760;wheelFilter.Q.value=.65;wheelFilter.connect(master);
+    const wheelGain=ctx.createGain();wheelGain.gain.value=0;wheelGain.connect(wheelFilter);audio.wheelGain=wheelGain;
+    const wheelNoise=ctx.createBufferSource();wheelNoise.buffer=makeNoiseBuffer(2);wheelNoise.loop=true;wheelNoise.connect(wheelGain);wheelNoise.start();audio.wheelNoise=wheelNoise;
+    const actionGain=ctx.createGain();actionGain.gain.value=0;actionGain.connect(master);audio.actionGain=actionGain;
+    const actionOsc=ctx.createOscillator();actionOsc.type='sine';actionOsc.frequency.value=180;actionOsc.connect(actionGain);actionOsc.start();audio.actionOsc=actionOsc;
+    audio.initialized=true;ctx.resume();updateSoundButton();return true;
+  }catch(error){console.warn('Web Audio를 초기화할 수 없습니다.',error);audio.supported=false;updateSoundButton();return false;}
+}
+function playTone(frequency=440,duration=.12,type='sine',volume=.12,slide=0){
+  if(!audio.initialized||audio.muted||audio.context.state==='closed'||audio.activeSfx.size>12)return;
+  const ctx=audio.context,t=ctx.currentTime,osc=ctx.createOscillator(),gain=ctx.createGain();audio.activeSfx.add(osc);
+  osc.type=type;osc.frequency.setValueAtTime(frequency,t);if(slide)osc.frequency.exponentialRampToValueAtTime(Math.max(20,frequency+slide),t+duration);
+  gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(volume,t+.018);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
+  osc.connect(gain);gain.connect(audio.master);osc.onended=()=>{osc.disconnect();gain.disconnect();audio.activeSfx.delete(osc);};osc.start(t);osc.stop(t+duration+.025);
+}
+function playNoise(duration=.14,volume=.055,frequency=900){
+  if(!audio.initialized||audio.muted||audio.activeSfx.size>12)return;
+  const ctx=audio.context,t=ctx.currentTime,source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();audio.activeSfx.add(source);
+  source.buffer=makeNoiseBuffer(duration+.05);filter.type='bandpass';filter.frequency.value=frequency;filter.Q.value=1.2;gain.gain.setValueAtTime(volume,t);gain.gain.exponentialRampToValueAtTime(.0001,t+duration);
+  source.connect(filter);filter.connect(gain);gain.connect(audio.master);source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();audio.activeSfx.delete(source);};source.start(t);source.stop(t+duration+.02);
+}
+function playSfx(kind){
+  if(kind==='start'){playTone(330,.09,'sine',.1,110);setTimeout(()=>playTone(550,.14,'sine',.08,140),80);}
+  else if(kind==='scan'){playTone(620,.2,'sine',.11,420);playNoise(.11,.035,1500);}
+  else if(kind==='drill'){playNoise(.28,.08,420);playTone(105,.3,'sawtooth',.045,-28);}
+  else if(kind==='seismic'){[180,260,390].forEach((f,i)=>setTimeout(()=>playTone(f,.18,'sine',.075,25),i*85));}
+  else if(kind==='relay'){[360,540,760].forEach((f,i)=>setTimeout(()=>playTone(f,.16,'triangle',.075,90),i*75));}
+  else if(kind==='unlock'){playTone(760,.15,'sine',.085,180);setTimeout(()=>playTone(1020,.19,'sine',.065,160),90);}
+  else if(kind==='success'){[392,523,659,784].forEach((f,i)=>setTimeout(()=>playTone(f,.34,'triangle',.08,45),i*105));}
+  else playTone(460,.08,'sine',.055,45);
+}
+function setMuted(muted){audio.muted=!!muted;localStorage.setItem(AUDIO_MUTE_KEY,String(audio.muted));if(audio.master)setAudioParam(audio.master.gain,audio.muted?0:.42,.06);updateSoundButton();return getAudioDebug();}
+function toggleMuted(){return setMuted(!audio.muted);}
+function updateAudio(){
+  if(!audio.initialized)return;
+  const moving=state.started&&!state.complete&&!state.briefingOpen&&!state.codexOpen,amount=Math.min(1,Math.abs(state.speed)/DRIVE.boostMax),throttle=!!(keys.KeyW||keys.ArrowUp||keys.KeyS||keys.ArrowDown);
+  setAudioParam(audio.motorOsc.frequency,48+amount*112+(state.boosting?24:0),.07);setAudioParam(audio.motorGain.gain,moving?(.008+amount*.055+(throttle?.014:0)):0,.07);setAudioParam(audio.motorFilter.frequency,380+amount*760,.09);
+  setAudioParam(audio.wheelGain.gain,moving?amount*.035:0,.08);
+  const actionActive=actionHeld&&moving&&distanceToObjective()<=missions[state.stage].radius;
+  setAudioParam(audio.actionOsc.frequency,[520,260,92,180,680][state.stage]||220,.03);setAudioParam(audio.actionGain.gain,actionActive?.035:0,.04);
+}
+function getAudioDebug(){return {supported:audio.supported,initialized:audio.initialized,muted:audio.muted,contextState:audio.context?.state||'not-created',activeOneShots:audio.activeSfx.size,motorRunning:!!audio.motorOsc,actionRunning:!!audio.actionOsc};}
+function shutdownAudio(){
+  if(!audio.initialized)return;
+  for(const source of [audio.motorOsc,audio.wheelNoise,audio.actionOsc,...audio.activeSfx]){try{source.stop();}catch{}try{source.disconnect();}catch{}}
+  audio.activeSfx.clear();try{audio.master.disconnect();}catch{}audio.context.close();
+}
 
 function terrainHeight(x, z) {
   const broad = Math.sin(x * .045) * 2.1 + Math.cos(z * .052) * 1.7 + Math.sin((x + z) * .023) * 2.4;
@@ -52,7 +170,7 @@ function init3D() {
   const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x73777a, roughness: 1, metalness: .02, flatShading: true }));
   terrain.receiveShadow = true; scene.add(terrain);
 
-  createStars(); createBoulders(); rover = createRover(); scene.add(rover); createMarker();
+  createStars(); createBoulders(); rover = createRover(); scene.add(rover); createScienceSites(); createMarker();
   camera.position.set(0, 10, 15); clock = new THREE.Clock();
 }
 
@@ -70,7 +188,7 @@ function createBoulders() {
   let seed = 8128; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   for (let i = 0; i < 48; i++) {
     const x = (rand()-.5)*350, z = (rand()-.5)*350, r = .8+rand()*2.8;
-    if (objectives.some(o => Math.hypot(x-o.x,z-o.z)<15) || Math.hypot(x,z)<12) continue;
+    if (missions.some(o => Math.hypot(x-o.x,z-o.z)<16) || Math.hypot(x,z)<12) continue;
     const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 0), mat); rock.position.set(x,terrainHeight(x,z)+r*.65,z); rock.scale.y=.65+rand()*.5; rock.rotation.set(rand()*2,rand()*2,rand()*2); rock.castShadow=rock.receiveShadow=true; scene.add(rock); boulders.push({x,z,r:r*.9});
   }
 }
@@ -187,46 +305,144 @@ function createRover() {
   return g;
 }
 
+function createScienceSites() {
+  const metal = new THREE.MeshStandardMaterial({color:0xaeb8bd,roughness:.42,metalness:.76});
+  const dark = new THREE.MeshStandardMaterial({color:0x11171c,roughness:.7,metalness:.48});
+  const amber = new THREE.MeshStandardMaterial({color:0xffb84c,emissive:0x6b3100,emissiveIntensity:1.2,roughness:.5});
+  const cyan = new THREE.MeshStandardMaterial({color:0x69ecff,emissive:0x0b7185,emissiveIntensity:1.8,roughness:.28});
+  const white = new THREE.MeshStandardMaterial({color:0xe0e6e7,roughness:.66,metalness:.2});
+  const place = (index, group) => { const m=missions[index]; group.position.set(m.x,terrainHeight(m.x,m.z)+.12,m.z); group.name=`science site ${index+1}: ${m.title}`; scene.add(group); scienceSites[index]={group,deployed:null,actionPart:null}; };
+
+  // 1: survey stakes frame the raised rim of the fresh impact crater.
+  const craterSite=new THREE.Group();
+  for(const [x,z] of [[-3,-3],[-3,3],[3,-3],[3,3]]){const pole=mesh(new THREE.CylinderGeometry(.07,.09,2.4,10),metal);pole.position.set(x,1.2,z);craterSite.add(pole);const lamp=mesh(new THREE.SphereGeometry(.16,12,8),amber);lamp.position.set(x,2.45,z);craterSite.add(lamp);}
+  const lidar=mesh(new THREE.CylinderGeometry(.28,.4,.5,16),dark);lidar.position.y=.42;craterSite.add(lidar);place(0,craterSite);scienceSites[0].actionPart=lidar;
+
+  // 2: a visibly dark cold trap with small blue ice-candidate glints.
+  const psr=new THREE.Group();
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(10,48),new THREE.MeshBasicMaterial({color:0x02070c,transparent:true,opacity:.72,depthWrite:false}));shadow.rotation.x=-Math.PI/2;shadow.position.y=.18;psr.add(shadow);
+  const coldRing=new THREE.Mesh(new THREE.RingGeometry(8.8,9.3,48),new THREE.MeshBasicMaterial({color:0x4ddfff,transparent:true,opacity:.45,side:THREE.DoubleSide,depthWrite:false}));coldRing.rotation.x=-Math.PI/2;coldRing.position.y=.22;psr.add(coldRing);
+  for(let i=0;i<9;i++){const a=i*2.4,r=2.4+(i%3)*1.55;const ice=mesh(new THREE.OctahedronGeometry(.12+(i%2)*.08,0),cyan);ice.position.set(Math.cos(a)*r,.32,Math.sin(a)*r);psr.add(ice);}
+  place(1,psr);scienceSites[1].actionPart=coldRing;
+
+  // 3: a striped regolith sampling collar and layered core rack.
+  const coreSite=new THREE.Group();
+  const collar=mesh(new THREE.TorusGeometry(1.15,.12,10,32),amber);collar.rotation.x=Math.PI/2;collar.position.y=.18;coreSite.add(collar);
+  for(const x of [-1.8,1.8]){const pole=mesh(new THREE.CylinderGeometry(.065,.065,2.2,8),white);pole.position.set(x,1.1,0);coreSite.add(pole);const tip=mesh(new THREE.ConeGeometry(.15,.35,10),amber);tip.position.set(x,2.35,0);coreSite.add(tip);}
+  const core=mesh(new THREE.CylinderGeometry(.16,.16,1.8,14),new THREE.MeshStandardMaterial({color:0x8a8174,roughness:1}));core.position.set(0,.95,0);coreSite.add(core);place(2,coreSite);scienceSites[2].actionPart=core;
+
+  // 4: a packaged station becomes a three-footed Apollo-style seismometer.
+  const seismicSite=new THREE.Group();const crate=box(1.5,.42,1.2,dark);crate.position.y=.25;seismicSite.add(crate);
+  const seismo=new THREE.Group();seismo.visible=false;const body=box(1.35,.62,1.05,amber);body.position.y=.58;seismo.add(body);
+  for(const [x,z] of [[-.62,-.45],[.62,-.45],[0,.62]])seismo.add(cylinderBetween(new THREE.Vector3(0,.5,0),new THREE.Vector3(x,.1,z),.055,metal,8));
+  const aerial=mesh(new THREE.CylinderGeometry(.03,.03,2.3,8),metal);aerial.position.set(.45,1.65,.2);seismo.add(aerial);seismicSite.add(seismo);place(3,seismicSite);scienceSites[3].deployed=seismo;scienceSites[3].actionPart=seismo;
+
+  // 5: a relay mast, dish and signal rings deploy on the ridge.
+  const relaySite=new THREE.Group();const base=mesh(new THREE.CylinderGeometry(.72,.95,.35,16),dark);base.position.y=.2;relaySite.add(base);
+  const relay=new THREE.Group();relay.visible=false;const mast=mesh(new THREE.CylinderGeometry(.07,.12,5.2,10),metal);mast.position.y=2.75;relay.add(mast);
+  const dish=mesh(new THREE.SphereGeometry(1.05,24,12,0,Math.PI*2,0,.72),white);dish.scale.y=.24;dish.rotation.x=-.55;dish.position.set(0,4.45,0);relay.add(dish);
+  const signal=new THREE.Mesh(new THREE.TorusGeometry(1.55,.035,8,48),new THREE.MeshBasicMaterial({color:0x67e8f9,transparent:true,opacity:.7}));signal.rotation.x=Math.PI/2;signal.position.y=4.9;relay.add(signal);relaySite.add(relay);place(4,relaySite);scienceSites[4].deployed=relay;scienceSites[4].actionPart=signal;
+}
+
 function createMarker() {
   marker = new THREE.Group();
-  const ring = new THREE.Mesh(new THREE.RingGeometry(7.3,7.8,48),new THREE.MeshBasicMaterial({color:0xffc45b,transparent:true,opacity:.8,side:THREE.DoubleSide})); ring.rotation.x=-Math.PI/2; ring.position.y=.15; marker.add(ring);
-  markerBeam = new THREE.Mesh(new THREE.CylinderGeometry(.22,1.8,15,16,1,true),new THREE.MeshBasicMaterial({color:0xffc45b,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false})); markerBeam.position.y=7.5; marker.add(markerBeam); scene.add(marker); updateMarker();
+  markerRing = new THREE.Mesh(new THREE.RingGeometry(7.3,7.8,48),new THREE.MeshBasicMaterial({color:0xffc45b,transparent:true,opacity:.8,side:THREE.DoubleSide})); markerRing.rotation.x=-Math.PI/2; markerRing.position.y=.15; marker.add(markerRing);
+  markerBeam = new THREE.Mesh(new THREE.CylinderGeometry(.22,1.8,15,16,1,true),new THREE.MeshBasicMaterial({color:0xffc45b,transparent:true,opacity:.14,side:THREE.DoubleSide,depthWrite:false})); markerBeam.position.y=7.5; marker.add(markerBeam);
+  actionPulse = new THREE.Mesh(new THREE.RingGeometry(1.2,1.45,48),new THREE.MeshBasicMaterial({color:0x67e8f9,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false}));actionPulse.rotation.x=-Math.PI/2;actionPulse.position.y=.3;marker.add(actionPulse);
+  scene.add(marker); updateMarker();
 }
-function updateMarker(){ const o=objectives[Math.min(state.stage,2)]; marker.position.set(o.x,terrainHeight(o.x,o.z),o.z); }
+function updateMarker(){ const o=missions[Math.min(state.stage,missions.length-1)]; marker.position.set(o.x,terrainHeight(o.x,o.z),o.z); const colors=[0xffc45b,0x55ddff,0xff9f43,0x9cff87,0x67e8f9],c=colors[state.stage]||colors[4]; markerRing.material.color.setHex(c);markerBeam.material.color.setHex(c); }
 
-function loadSave() { try { const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if(s && Number.isInteger(s.stage) && s.stage>=0 && s.stage<3){ state.stage=s.stage; state.battery=Math.max(10,Math.min(100,s.battery||100)); state.elapsed=s.elapsed||0; rover.position.set(s.x||0,0,s.z||0); state.heading=s.heading||0; rover.rotation.y=state.heading; return true; } } catch {} return false; }
-function save(){ if(!state.started||state.complete)return; localStorage.setItem(SAVE_KEY,JSON.stringify({stage:state.stage,battery:state.battery,elapsed:state.elapsed,x:rover.position.x,z:rover.position.z,heading:state.heading})); }
-function reset(){ localStorage.removeItem(SAVE_KEY); Object.assign(state,{started:false,complete:false,stage:0,battery:100,speed:0,heading:0,elapsed:0,actionProgress:0,failSafes:0}); rover.position.set(0,0,0); rover.rotation.y=0; updateMarker(); updateMissionUI(); $('#ending').classList.add('hidden'); $('#start').classList.remove('hidden'); $('#continueBtn').classList.add('hidden'); setGameHud(false); return getState(); }
-function startGame(useSave=false){ if(!useSave){ localStorage.removeItem(SAVE_KEY); Object.assign(state,{stage:0,battery:100,speed:0,heading:0,elapsed:0,actionProgress:0,complete:false}); rover.position.set(0,0,0); rover.rotation.y=0; } state.started=true; $('#start').classList.add('hidden'); setGameHud(true); updateMarker(); updateMissionUI(); toast('LUNA-12 연결 완료 · 목표 표식을 따라가십시오'); }
-function setGameHud(on){ ['#topbar','#mission','#telemetry','#minimap','#objectiveArrow'].forEach(s=>$(s).classList.toggle('hidden',!on)); $('#touch').classList.toggle('active',on); }
+function restoreDeployedProps(){scienceSites.forEach((site,i)=>{if(site?.deployed){site.deployed.visible=!!state.discoveries[i];site.deployed.scale.setScalar(1);}});}
+function loadSave() {
+  try {
+    const s=JSON.parse(localStorage.getItem(SAVE_KEY));
+    if(s?.version===SAVE_VERSION&&Number.isInteger(s.stage)&&s.stage>=0&&s.stage<missions.length&&Array.isArray(s.discoveries)&&s.discoveries.length===missions.length){
+      state.stage=s.stage;state.discoveries=s.discoveries.map(Boolean);state.battery=Math.max(10,Math.min(100,Number(s.battery)||100));state.elapsed=Math.max(0,Number(s.elapsed)||0);
+      rover.position.set(Number(s.x)||0,0,Number(s.z)||0);state.heading=Number(s.heading)||0;rover.rotation.y=state.heading;restoreDeployedProps();return true;
+    }
+  } catch {}
+  return false;
+}
+function save(){if(!state.started||state.complete)return;localStorage.setItem(SAVE_KEY,JSON.stringify({version:SAVE_VERSION,stage:state.stage,discoveries:state.discoveries,battery:state.battery,elapsed:state.elapsed,x:rover.position.x,z:rover.position.z,heading:state.heading}));}
+function clearInputs(){actionHeld=false;Object.keys(keys).forEach(k=>keys[k]=false);state.actionProgress=0;}
+function reset(){
+  clearTimeout(transitionTimer);localStorage.removeItem(SAVE_KEY);clearInputs();
+  Object.assign(state,{started:false,complete:false,stage:0,battery:100,speed:0,heading:0,elapsed:0,actionProgress:0,failSafes:0,discoveries:Array(5).fill(false),briefingOpen:false,codexOpen:false,transitioning:false,boosting:false});
+  rover.position.set(0,0,0);rover.rotation.y=0;restoreDeployedProps();updateMarker();updateMissionUI();renderCodex();
+  ['#ending','#briefing','#codex','#observationCard'].forEach(s=>$(s).classList.add('hidden'));$('#start').classList.remove('hidden');$('#continueBtn').classList.add('hidden');setGameHud(false);return getState();
+}
+function startGame(useSave=false){
+  if(!useSave){localStorage.removeItem(SAVE_KEY);Object.assign(state,{stage:0,battery:100,speed:0,heading:0,elapsed:0,actionProgress:0,complete:false,failSafes:0,discoveries:Array(5).fill(false),boosting:false});rover.position.set(0,0,0);rover.rotation.y=0;restoreDeployedProps();}
+  state.started=true;state.transitioning=false;$('#start').classList.add('hidden');setGameHud(true);updateMarker();updateMissionUI();renderCodex();showBriefing();
+}
+function setGameHud(on){['#topbar','#mission','#telemetry','#minimap','#objectiveArrow'].forEach(s=>$(s).classList.toggle('hidden',!on));$('#touch').classList.toggle('active',on);}
+function showBriefing(){
+  const m=missions[state.stage];clearInputs();state.speed=0;state.briefingOpen=true;
+  $('#briefingMission').textContent=`SCIENCE MISSION ${String(state.stage+1).padStart(2,'0')} / 05`;$('#briefingPhenomenon').textContent=m.phenomenon;$('#briefingTitle').textContent=m.title;$('#briefingText').textContent=m.briefing;$('#briefingTask').textContent=m.task;
+  const link=$('#briefingSource');link.textContent=`과학 출처 · ${m.sourceLabel} ↗`;link.href=m.sourceUrl;$('#briefingContinue').textContent=state.stage===0?'탐사 시작':'계속';$('#briefing').classList.remove('hidden');
+}
+function closeBriefing(){if(!state.briefingOpen)return getState();state.briefingOpen=false;$('#briefing').classList.add('hidden');toast(`${missions[state.stage].phenomenon} · 현장 표식을 따라가십시오`);save();return getState();}
+function openCodex(){clearInputs();state.speed=0;state.codexOpen=true;renderCodex();$('#codex').classList.remove('hidden');return getState();}
+function closeCodex(){state.codexOpen=false;$('#codex').classList.add('hidden');return getState();}
+function renderCodex(){
+  const count=state.discoveries.filter(Boolean).length;$('#codexCount').textContent=`${count} / 5 발견`;$('#codexBadge').textContent=`${count}/5`;
+  $('#codexList').innerHTML=missions.map((m,i)=>{const unlocked=state.discoveries[i];return `<article class="codex-entry ${unlocked?'unlocked':'locked'}"><span class="codex-number">${String(i+1).padStart(2,'0')}</span><div><small>${unlocked?m.phenomenon:'미발견 현상'}</small><h3>${unlocked?m.title:'잠긴 기록'}</h3><p>${unlocked?m.observation:'현장 임무를 완료하면 관측 결과가 기록됩니다.'}</p>${unlocked?`<a href="${m.sourceUrl}" target="_blank" rel="noopener noreferrer">${m.sourceLabel} ↗</a>`:''}</div></article>`;}).join('');
+}
+function updateMissionUI(){const m=missions[Math.min(state.stage,missions.length-1)];$('#stageNum').textContent=String(state.stage+1).padStart(2,'0');$('#missionPhenomenon').textContent=m.phenomenon;$('#missionTitle').textContent=m.title;$('#missionText').textContent=m.task;$('#actionLabel').textContent=`E 길게 눌러 ${m.action}`;}
+function distanceToObjective(){const m=missions[Math.min(state.stage,missions.length-1)];return Math.hypot(rover.position.x-m.x,rover.position.z-m.z);}
+function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800);}
+function showObservation(index,next){
+  const m=missions[index];state.transitioning=true;clearInputs();$('#observationTitle').textContent=m.title;$('#observationText').textContent=m.observation;$('#observationCard').classList.remove('hidden');
+  transitionTimer=setTimeout(()=>{$('#observationCard').classList.add('hidden');state.transitioning=false;next();},1350);
+}
+function performObjective(){
+  if(!state.started||state.complete||state.briefingOpen||state.codexOpen||state.transitioning)return false;
+  const index=state.stage,m=missions[index];if(distanceToObjective()>m.radius){toast('표시된 현장 조사 구역 안으로 이동하십시오');return false;}
+  state.actionProgress=0;state.discoveries[index]=true;state.battery=Math.min(100,state.battery+8);const site=scienceSites[index];
+  if(site?.deployed){site.deployed.visible=true;site.deployed.scale.setScalar(.08);}
+  playSfx(['scan','scan','drill','seismic','relay'][index]);setTimeout(()=>playSfx('unlock'),180);renderCodex();save();
+  showObservation(index,()=>{
+    if(index===missions.length-1){completeMission();return;}
+    state.stage=index+1;updateMarker();updateMissionUI();save();showBriefing();
+  });
+  return true;
+}
+function completeMission(){state.complete=true;state.speed=0;state.boosting=false;state.transitioning=false;localStorage.removeItem(SAVE_KEY);setGameHud(false);$('#actionWrap').classList.add('hidden');$('#endingDiscoveries').innerHTML=missions.map(m=>`<li><b>${m.title}</b><span>${m.observation}</span></li>`).join('');$('#ending').classList.remove('hidden');$('#finalTime').textContent=formatTime(state.elapsed);setTimeout(()=>playSfx('success'),180);}
+function failSafe(){state.failSafes++;state.battery=35;state.speed=0;const m=missions[state.stage];const a=Math.atan2(m.x,m.z);rover.position.set(m.x-Math.sin(a)*18,0,m.z-Math.cos(a)*18);toast('비상 전력 가동 · 안전 지점으로 복귀했습니다');save();}
 
-function updateMissionUI(){ const o=objectives[Math.min(state.stage,2)]; $('#stageNum').textContent=String(state.stage+1).padStart(2,'0'); $('#missionTitle').textContent=o.name; $('#missionText').textContent=o.detail; $('#actionLabel').textContent=`E 길게 눌러 ${o.action}`; }
-function distanceToObjective(){const o=objectives[Math.min(state.stage,2)];return Math.hypot(rover.position.x-o.x,rover.position.z-o.z)}
-function toast(msg){ const el=$('#toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2600); }
-
-function performObjective(){ if(!state.started||state.complete)return false; const o=objectives[state.stage]; if(distanceToObjective()>o.radius){toast('목표 구역 안으로 이동하십시오');return false;} state.actionProgress=0; if(state.stage===0) toast('얼음 반사 신호 확인 · 표본 좌표가 표시됩니다'); else if(state.stage===1) toast('빙하 코어 확보 · 중계 지점으로 이동하십시오'); else { completeMission(); return true; } state.stage++; state.battery=Math.min(100,state.battery+10); updateMarker(); updateMissionUI(); save(); return true; }
-function completeMission(){ state.complete=true; state.speed=0; localStorage.removeItem(SAVE_KEY); setTimeout(()=>{setGameHud(false);$('#actionWrap').classList.add('hidden');$('#ending').classList.remove('hidden');$('#finalTime').textContent=formatTime(state.elapsed);},500); }
-function failSafe(){ state.failSafes++; state.battery=35; state.speed=0; const o=objectives[state.stage]; const a=Math.atan2(o.x,o.z); rover.position.set(o.x-Math.sin(a)*18,0,o.z-Math.cos(a)*18); toast('비상 전력 가동 · 안전 지점으로 복귀했습니다'); save(); }
+function updateScienceEffects(dt){
+  const now=performance.now()*.001,current=scienceSites[state.stage];
+  scienceSites.forEach((site,i)=>{if(site?.deployed&&site.deployed.visible){const s=site.deployed.scale.x;site.deployed.scale.setScalar(THREE.MathUtils.lerp(s,1,.11));if(i===4&&site.actionPart)site.actionPart.rotation.z+=dt*.65;}});
+  if(scienceSites[1]?.actionPart)scienceSites[1].actionPart.material.opacity=.35+Math.sin(now*2.2)*.16;
+  const active=actionHeld&&!state.briefingOpen&&!state.codexOpen&&!state.transitioning&&state.started&&!state.complete&&distanceToObjective()<=missions[state.stage].radius;
+  if(actionPulse){const phase=state.actionProgress/Math.max(.1,missions[state.stage].hold);actionPulse.material.opacity=active?.72:0;actionPulse.scale.setScalar(1+phase*5.4);}
+  if(active&&current?.actionPart){if(state.stage===0)current.actionPart.rotation.y+=dt*5;if(state.stage===2){current.actionPart.rotation.y+=dt*10;current.actionPart.position.y=.95-Math.sin(Math.min(1,state.actionProgress/missions[2].hold)*Math.PI)*.55;}if(state.stage===4)current.actionPart.scale.setScalar(1+Math.sin(now*8)*.18);}
+}
 
 function update(dt){
   marker.rotation.y += dt*.45; markerBeam.material.opacity=.1+Math.sin(performance.now()*.003)*.045;
   const idleTime=performance.now()*.001;
   roverRig.dishPivot.rotation.y=Math.sin(idleTime*.23)*.32;
   roverRig.dishPivot.rotation.x=-.12+Math.sin(idleTime*.17)*.06;
-  if(!state.started||state.complete){updateRoverRig(dt,0);updateCamera(dt);return;}
+  updateScienceEffects(dt);
+  if(!state.started||state.complete||state.briefingOpen||state.codexOpen||state.transitioning){state.boosting=false;updateRoverRig(dt,0);updateCamera(dt);updateAudio();return;}
   state.elapsed+=dt;
   const forward=keys.KeyW||keys.ArrowUp, back=keys.KeyS||keys.ArrowDown, left=keys.KeyA||keys.ArrowLeft, right=keys.KeyD||keys.ArrowRight, brake=keys.Space;
-  const accel=forward?5.8:back?-4.2:0;
-  state.speed += accel*dt; state.speed*=Math.pow(brake?.72:.975,dt*60); state.speed=Math.max(-5,Math.min(11,state.speed)); if(Math.abs(state.speed)<.025)state.speed=0;
-  if((left||right)&&Math.abs(state.speed)>.08) state.heading += (left?1:-1)*dt*1.2*Math.sign(state.speed)*Math.min(1,Math.abs(state.speed)/3);
+  state.boosting=!!(forward&&(keys.ShiftLeft||keys.ShiftRight));
+  const accel=forward?(state.boosting?DRIVE.boostAcceleration:DRIVE.acceleration):back?-DRIVE.reverseAcceleration:0;
+  state.speed+=accel*dt;if(brake)state.speed*=Math.pow(DRIVE.brakeStrength,dt*60);else if(!forward&&!back)state.speed*=Math.pow(.988,dt*60);
+  const topSpeed=state.boosting?DRIVE.boostMax:DRIVE.normalMax;state.speed=Math.max(-DRIVE.reverseMax,Math.min(topSpeed,state.speed));if(Math.abs(state.speed)<.025)state.speed=0;
+  const speedRatio=Math.min(1,Math.abs(state.speed)/DRIVE.boostMax),steeringAttenuation=1-speedRatio*.68;
+  if((left||right)&&Math.abs(state.speed)>.08)state.heading+=(left?1:-1)*dt*1.48*steeringAttenuation*Math.sign(state.speed)*Math.min(1,Math.abs(state.speed)/2.2);
   const oldX=rover.position.x,oldZ=rover.position.z; rover.position.x-=Math.sin(state.heading)*state.speed*dt; rover.position.z-=Math.cos(state.heading)*state.speed*dt;
   rover.position.x=Math.max(-WORLD+8,Math.min(WORLD-8,rover.position.x)); rover.position.z=Math.max(-WORLD+8,Math.min(WORLD-8,rover.position.z));
   for(const b of boulders){const dx=rover.position.x-b.x,dz=rover.position.z-b.z,d=Math.hypot(dx,dz);if(d<b.r+1.7){rover.position.x=oldX;rover.position.z=oldZ;state.speed*=-.15;break;}}
   rover.rotation.y=state.heading; rover.position.y=terrainHeight(rover.position.x,rover.position.z)+.12; rover.rotation.z=THREE.MathUtils.lerp(rover.rotation.z,(terrainHeight(rover.position.x+1.5,rover.position.z)-terrainHeight(rover.position.x-1.5,rover.position.z))*.13,.12); rover.rotation.x=THREE.MathUtils.lerp(rover.rotation.x,(terrainHeight(rover.position.x,rover.position.z-1.5)-terrainHeight(rover.position.x,rover.position.z+1.5))*.13,.12);
   updateRoverRig(dt,(left?1:0)-(right?1:0));
-  state.battery-=dt*(.035+Math.abs(state.speed)*.017); if(state.battery<=0)failSafe();
-  const near=distanceToObjective()<=objectives[state.stage].radius; $('#actionWrap').classList.toggle('hidden',!near); if(actionHeld&&near){state.actionProgress+=dt; if(state.actionProgress>=objectives[state.stage].hold)performObjective();}else state.actionProgress=Math.max(0,state.actionProgress-dt*2.5); $('#actionProgress').style.width=`${Math.min(100,state.actionProgress/objectives[state.stage].hold*100)}%`;
-  updateCamera(dt); updateHUD(); if(state.elapsed-lastSave>5){lastSave=state.elapsed;save();}
+  state.battery-=dt*(.035+Math.abs(state.speed)*.017+(state.boosting?.13:0)); if(state.battery<=0)failSafe();
+  const near=distanceToObjective()<=missions[state.stage].radius; $('#actionWrap').classList.toggle('hidden',!near); if(actionHeld&&near){state.actionProgress+=dt; if(state.actionProgress>=missions[state.stage].hold)performObjective();}else state.actionProgress=Math.max(0,state.actionProgress-dt*2.5); $('#actionProgress').style.width=`${Math.min(100,state.actionProgress/missions[state.stage].hold*100)}%`;
+  updateCamera(dt);updateAudio();updateHUD();if(state.elapsed-lastSave>5){lastSave=state.elapsed;save();}
 }
 
 function updateRoverRig(dt,turnInput){
@@ -249,28 +465,31 @@ function updateRoverRig(dt,turnInput){
   roverRig.suspensions[1].position.y=THREE.MathUtils.lerp(roverRig.suspensions[1].position.y,(rightY-.78)*.34,.12);
 }
 function updateCamera(dt){
-  const back=12.8,side=5.4,cos=Math.cos(state.heading),sin=Math.sin(state.heading);
+  const speedRatio=Math.min(1,Math.abs(state.speed)/DRIVE.boostMax),back=12.8+speedRatio*3+(state.boosting?.7:0),side=5.4+speedRatio*.45,cos=Math.cos(state.heading),sin=Math.sin(state.heading);
   cameraGoal.set(rover.position.x+sin*back+cos*side,rover.position.y+5.25,rover.position.z+cos*back-sin*side);
-  camera.position.lerp(cameraGoal,1-Math.pow(.008,dt)); cameraLook.set(rover.position.x,rover.position.y+1.75,rover.position.z-.7); camera.lookAt(cameraLook);
+  camera.position.lerp(cameraGoal,1-Math.pow(.008,dt));camera.fov=THREE.MathUtils.lerp(camera.fov,50+speedRatio*5+(state.boosting?1:0),1-Math.pow(.02,dt));camera.updateProjectionMatrix();cameraLook.set(rover.position.x,rover.position.y+1.75,rover.position.z-.7); camera.lookAt(cameraLook);
 }
-function updateHUD(){ const d=distanceToObjective(),o=objectives[state.stage]; $('#speed').textContent=Math.abs(state.speed).toFixed(1); $('#batteryText').textContent=`${Math.ceil(state.battery)}%`; $('#batteryBar').style.width=`${state.battery}%`; $('#batteryBar').style.background=state.battery<25?'#ff6b55':''; $('#distance').textContent=`${Math.round(d)} m`; $('#arrowDistance').textContent=`${Math.round(d)}m`; const targetAngle=Math.atan2(o.x-rover.position.x,o.z-rover.position.z); $('#objectiveArrow').style.transform=`translateX(-50%) rotate(${state.heading-targetAngle}rad)`; drawMap(); }
-function drawMap(){const w=map.width,c=w/2,s=.35;mapCtx.clearRect(0,0,w,w);mapCtx.strokeStyle='rgba(175,205,215,.15)';for(let r=25;r<80;r+=25){mapCtx.beginPath();mapCtx.arc(c,c,r,0,Math.PI*2);mapCtx.stroke()}const o=objectives[state.stage];mapCtx.fillStyle='#ffc45b';mapCtx.beginPath();mapCtx.arc(c+(o.x-rover.position.x)*s,c+(o.z-rover.position.z)*s,5,0,7);mapCtx.fill();mapCtx.save();mapCtx.translate(c,c);mapCtx.rotate(-state.heading);mapCtx.fillStyle='#67e8f9';mapCtx.beginPath();mapCtx.moveTo(0,-7);mapCtx.lineTo(5,6);mapCtx.lineTo(-5,6);mapCtx.fill();mapCtx.restore();}
+function updateHUD(){const d=distanceToObjective(),m=missions[state.stage];$('#speed').textContent=Math.abs(state.speed).toFixed(1);$('#speedGauge').classList.toggle('boosting',state.boosting);$('#boostIndicator').textContent=state.boosting?'BOOST 30':'DRIVE 24';$('#boostIndicator').classList.toggle('active',state.boosting);$('#touchBoost').classList.toggle('active',state.boosting); $('#batteryText').textContent=`${Math.ceil(state.battery)}%`; $('#batteryBar').style.width=`${state.battery}%`; $('#batteryBar').style.background=state.battery<25?'#ff6b55':''; $('#distance').textContent=`${Math.round(d)} m`; $('#arrowDistance').textContent=`${Math.round(d)}m`; const targetAngle=Math.atan2(m.x-rover.position.x,m.z-rover.position.z); $('#objectiveArrow').style.transform=`translateX(-50%) rotate(${state.heading-targetAngle}rad)`; drawMap(); }
+function drawMap(){const w=map.width,c=w/2,s=.35;mapCtx.clearRect(0,0,w,w);mapCtx.strokeStyle='rgba(175,205,215,.15)';for(let r=25;r<80;r+=25){mapCtx.beginPath();mapCtx.arc(c,c,r,0,Math.PI*2);mapCtx.stroke()}const m=missions[state.stage];mapCtx.fillStyle=['#ffc45b','#55ddff','#ff9f43','#9cff87','#67e8f9'][state.stage];mapCtx.beginPath();mapCtx.arc(c+(m.x-rover.position.x)*s,c+(m.z-rover.position.z)*s,5,0,7);mapCtx.fill();mapCtx.save();mapCtx.translate(c,c);mapCtx.rotate(-state.heading);mapCtx.fillStyle='#67e8f9';mapCtx.beginPath();mapCtx.moveTo(0,-7);mapCtx.lineTo(5,6);mapCtx.lineTo(-5,6);mapCtx.fill();mapCtx.restore();}
 function formatTime(sec){return `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(Math.floor(sec%60)).padStart(2,'0')}`}
-function getState(){return {started:state.started,complete:state.complete,stage:state.stage,stageName:objectives[Math.min(state.stage,2)].name,battery:+state.battery.toFixed(2),speed:+state.speed.toFixed(2),elapsed:+state.elapsed.toFixed(2),position:{x:+rover.position.x.toFixed(2),z:+rover.position.z.toFixed(2)},distanceToObjective:+distanceToObjective().toFixed(2),failSafes:state.failSafes};}
+function getState(){const m=missions[Math.min(state.stage,missions.length-1)];return {started:state.started,complete:state.complete,stage:state.stage,stageNumber:state.stage+1,stageName:m.title,phenomenon:m.phenomenon,battery:+state.battery.toFixed(2),speed:+state.speed.toFixed(2),boosting:state.boosting,speedLimits:{normal:DRIVE.normalMax,boost:DRIVE.boostMax,reverse:DRIVE.reverseMax},elapsed:+state.elapsed.toFixed(2),position:{x:+rover.position.x.toFixed(2),z:+rover.position.z.toFixed(2)},distanceToObjective:+distanceToObjective().toFixed(2),failSafes:state.failSafes,briefingOpen:state.briefingOpen,codexOpen:state.codexOpen,transitioning:state.transitioning,discoveredCount:state.discoveries.filter(Boolean).length,discoveries:state.discoveries.map((unlocked,i)=>({title:missions[i].title,unlocked}))};}
 function getRoverDebug(){let triangles=0,drawables=0;rover.traverse(o=>{if(!o.isMesh||!o.geometry)return;drawables++;const base=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3;triangles+=base*(o.isInstancedMesh?o.count:1);});return {name:rover.name,wheelCount:wheels.length,grouserCount:wheels.length*24,triangles:Math.round(triangles),drawables,wheelSpin:+roverRig.wheelSpin.toFixed(3),steering:+roverRig.steering.toFixed(3),wheelObjects:wheels.map(w=>({name:w.spin.name,spin:+w.spinAngle.toFixed(3),steer:+w.steerAngle.toFixed(3),height:+w.steer.position.y.toFixed(3)})),cameraFov:camera.fov,renderer:{toneMapping:renderer.toneMapping,outputColorSpace:renderer.outputColorSpace,shadowMapSize:2048}};}
-function teleportToObjective(){const o=objectives[state.stage];rover.position.set(o.x+2,terrainHeight(o.x+2,o.z),o.z);state.speed=0;updateHUD();return getState();}
+function teleportToObjective(){const m=missions[state.stage];rover.position.set(m.x+2,terrainHeight(m.x+2,m.z)+.12,m.z);state.speed=0;updateHUD();return getState();}
 
 function bind(){
+  addEventListener('pagehide',shutdownAudio,{once:true});
   addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-  addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyE')actionHeld=true;if(e.code==='KeyH')$('#help').classList.remove('hidden');if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
+  addEventListener('keydown',e=>{if(e.code==='KeyC'&&state.started){state.codexOpen?closeCodex():openCodex();return;}if(e.code==='Escape'&&state.codexOpen){closeCodex();return;}keys[e.code]=true;if(e.code==='KeyE')actionHeld=true;if(e.code==='KeyH')$('#help').classList.remove('hidden');if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
   addEventListener('keyup',e=>{keys[e.code]=false;if(e.code==='KeyE')actionHeld=false});
-  $('#startBtn').onclick=()=>startGame(false); $('#continueBtn').onclick=()=>startGame(true); $('#restartBtn').onclick=()=>reset(); $('#helpBtn').onclick=()=>$('#help').classList.remove('hidden'); $('#closeHelp').onclick=()=>$('#help').classList.add('hidden');
+  $('#startBtn').onclick=()=>{initAudio();playSfx('start');startGame(false);};$('#continueBtn').onclick=()=>{initAudio();playSfx('start');startGame(true);};$('#briefingContinue').onclick=()=>{playSfx('ui');closeBriefing();};$('#restartBtn').onclick=()=>reset();
+  $('#soundBtn').onclick=()=>toggleMuted();
+  $('#codexBtn').onclick=()=>openCodex();$('#endingCodexBtn').onclick=()=>openCodex();$('#closeCodex').onclick=()=>closeCodex();$('#helpBtn').onclick=()=>$('#help').classList.remove('hidden');$('#closeHelp').onclick=()=>$('#help').classList.add('hidden');
   const actionStart=e=>{e.preventDefault();actionHeld=true},actionEnd=e=>{e.preventDefault();actionHeld=false};
   for(const el of [$('#actionBtn'),$('#touchAction')]){el.addEventListener('pointerdown',actionStart);el.addEventListener('pointerup',actionEnd);el.addEventListener('pointercancel',actionEnd);el.addEventListener('pointerleave',actionEnd)}
   document.querySelectorAll('[data-key]').forEach(el=>{const code=el.dataset.key;el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true});for(const ev of ['pointerup','pointercancel','pointerleave'])el.addEventListener(ev,e=>{e.preventDefault();keys[code]=false})});
 }
 
-init3D(); bind(); const hasSave=loadSave(); if(hasSave)$('#continueBtn').classList.remove('hidden'); updateMissionUI();
-window.__LUNA12__={getState,getRoverDebug,teleportToObjective,performObjective,setBattery(v){state.battery=Math.max(0,Math.min(100,Number(v)));return getState();},start(){startGame(false);return getState();},reset};
+init3D();bind();const hasSave=loadSave();if(hasSave)$('#continueBtn').classList.remove('hidden');updateMissionUI();renderCodex();updateSoundButton();
+window.__LUNA12__={getState,getAudioDebug,getRoverDebug,getMissions(){return missions.map(m=>({...m}));},teleportToObjective,performObjective,continueBriefing:closeBriefing,openCodex,closeCodex,setMuted,setBattery(v){state.battery=Math.max(0,Math.min(100,Number(v)));return getState();},start(){startGame(false);return getState();},reset};
 window.__LUNA12_READY__=true;
 renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.05);update(dt);renderer.render(scene,camera)});

@@ -5,51 +5,85 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
   <meta name="theme-color" content="#06090e">
   <link rel="icon" href="data:,">
-  <title>LUNA-12: 그림자 분화구</title>
+  <title>LUNA-12: 달 과학 탐사</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main id="game" aria-label="LUNA-12 달 탐사 로버 게임">
+  <main id="game" aria-label="LUNA-12 달 과학 탐사 로버 게임">
     <canvas id="scene"></canvas>
     <div class="vignette"></div>
 
     <section id="start" class="modal">
       <div class="panel hero">
-        <div class="eyebrow">LUNAR RESCUE PROGRAM · 2041</div>
-        <h1>LUNA-12<br><span>그림자 분화구</span></h1>
-        <p>영구 음영 지대에서 얼음 신호를 확보하고 통신 비콘을 설치하십시오.</p>
-        <button id="startBtn" class="primary">임무 시작</button>
+        <div class="eyebrow">LUNAR SCIENCE EXPEDITION · LUNA-12</div>
+        <h1>LUNA-12<br><span>달의 기록을 읽다</span></h1>
+        <p class="start-goal"><strong>전체 목표</strong> 달의 다섯 과학 현상을 조사하고 관측 결과를 기지로 전송하세요.</p>
+        <div class="first-goal"><span>첫 번째 목표</span><strong>노란 표식을 따라 충돌 분화구로 이동한 뒤, E를 길게 눌러 스캔하세요.</strong></div>
+        <div class="start-controls" aria-label="조작 방법">
+          <div><kbd>WASD / 방향키</kbd><span>주행·조향</span></div><div><kbd>SPACE</kbd><span>제동</span></div><div><kbd>E 길게</kbd><span>현장 행동</span></div><div><kbd>SHIFT</kbd><span>부스트</span></div><div><kbd>C / 도감 버튼</kbd><span>탐사 도감</span></div><div><kbd>모바일 화면 버튼</kbd><span>주행·행동·BOOST</span></div>
+        </div>
+        <p class="autosave-note">각 현장에서는 과학 설명이 열리며, 탐사 진행은 자동 저장됩니다.</p>
+        <button id="startBtn" class="primary">분화구 탐사 시작</button>
         <button id="continueBtn" class="ghost hidden">저장 지점에서 계속</button>
-        <div class="start-controls"><b>조종</b> WASD / 방향키 · <b>제동</b> Space · <b>행동</b> E 길게 누르기 · <b>안내</b> H</div>
       </div>
+    </section>
+
+    <section id="briefing" class="modal hidden" aria-modal="true" role="dialog" aria-labelledby="briefingTitle">
+      <article class="panel science-panel">
+        <div class="science-heading"><div><div id="briefingMission" class="eyebrow">SCIENCE MISSION 01 / 05</div><div id="briefingPhenomenon" class="phenomenon">충돌 지형학</div></div><span class="science-icon">◌</span></div>
+        <h2 id="briefingTitle">충돌 분화구 발견</h2>
+        <p id="briefingText" class="science-copy"></p>
+        <div class="task-box"><span>현장 임무</span><strong id="briefingTask"></strong></div>
+        <a id="briefingSource" class="source-link" href="#" target="_blank" rel="noopener noreferrer">출처 보기 ↗</a>
+        <button id="briefingContinue" class="primary">탐사 시작</button>
+      </article>
+    </section>
+
+    <section id="codex" class="modal hidden" aria-modal="true" role="dialog" aria-labelledby="codexTitle">
+      <div class="panel codex-panel">
+        <button id="closeCodex" class="close" aria-label="탐사 도감 닫기">×</button>
+        <div class="eyebrow">LUNA-12 SCIENCE ARCHIVE</div>
+        <div class="codex-head"><h2 id="codexTitle">탐사 도감</h2><strong id="codexCount">0 / 5 발견</strong></div>
+        <p>현장에서 장비 조사를 완료한 달 과학 기록이 저장됩니다.</p>
+        <div id="codexList" class="codex-list"></div>
+      </div>
+    </section>
+
+    <section id="observationCard" class="discovery-banner hidden" role="status" aria-live="assertive">
+      <span>새로운 발견 · 탐사 도감 등록</span>
+      <strong id="observationTitle"></strong>
+      <p id="observationText"></p>
     </section>
 
     <section id="ending" class="modal hidden">
       <div class="panel ending-panel">
         <div class="success-ring">✓</div>
-        <div class="eyebrow">MISSION COMPLETE</div>
-        <h2>빙하 신호 전송 완료</h2>
-        <p>라그랑주 중계망이 LUNA-12의 표본 데이터를 수신했습니다.<br>달 남극 유인 기지의 다음 좌표가 확보되었습니다.</p>
+        <div class="eyebrow">FIVE DISCOVERIES COMPLETE</div>
+        <h2>달 과학 탐사 완료</h2>
+        <p>분화구에서 통신 능선까지, LUNA-12가 다섯 현장의 관측 기록을 완성했습니다.</p>
+        <ol id="endingDiscoveries" class="ending-discoveries"></ol>
         <div class="mission-time">임무 시간 <strong id="finalTime">00:00</strong></div>
-        <button id="restartBtn" class="primary">새 임무 시작</button>
+        <button id="endingCodexBtn" class="ghost">완성된 도감 보기</button>
+        <button id="restartBtn" class="primary">새 탐사 시작</button>
       </div>
     </section>
 
     <header id="topbar" class="hud hidden">
-      <div class="brand"><span class="dot"></span><b>LUNA-12</b><small>ROVER ONLINE</small></div>
-      <button id="helpBtn" class="icon-btn" aria-label="조작 도움말">?</button>
+      <div class="brand"><span class="dot"></span><b>LUNA-12</b><small>SCIENCE ROVER ONLINE</small></div>
+      <div class="top-actions"><button id="soundBtn" class="hud-btn sound-btn" aria-label="효과음 끄기" aria-pressed="true">소리 켜짐</button><button id="codexBtn" class="hud-btn" aria-label="탐사 도감 열기">탐사 도감 <b id="codexBadge">0/5</b></button><button id="helpBtn" class="icon-btn" aria-label="조작 도움말">?</button></div>
     </header>
 
     <aside id="mission" class="hud mission-card hidden">
-      <div class="eyebrow">CURRENT OBJECTIVE</div>
-      <div class="stage-count"><span id="stageNum">01</span> / 03</div>
-      <h2 id="missionTitle">스캔 구역으로 이동</h2>
-      <p id="missionText">표시된 구역에 로버를 진입시키십시오.</p>
-      <div class="distance"><span>목표 거리</span><strong id="distance">-- m</strong></div>
+      <div class="eyebrow">SCIENCE OBJECTIVE</div>
+      <div class="stage-count"><span id="stageNum">01</span> / 05</div>
+      <div id="missionPhenomenon" class="hud-phenomenon">충돌 지형학</div>
+      <h2 id="missionTitle">충돌 분화구 발견</h2>
+      <p id="missionText">표시된 분화구 가장자리로 이동하십시오.</p>
+      <div class="distance"><span>관측 지점</span><strong id="distance">-- m</strong></div>
     </aside>
 
     <aside id="telemetry" class="hud telemetry hidden">
-      <div class="gauge"><span>속도</span><strong id="speed">0.0</strong><small>m/s</small></div>
+      <div id="speedGauge" class="gauge"><span>속도</span><strong id="speed">0.0</strong><small>m/s</small><em id="boostIndicator">DRIVE 24</em></div>
       <div class="battery"><div><span>BATTERY</span><strong id="batteryText">100%</strong></div><div class="bar"><i id="batteryBar"></i></div></div>
     </aside>
 
@@ -57,19 +91,20 @@
     <div id="objectiveArrow" class="hud arrow hidden">▲<small id="arrowDistance">0m</small></div>
 
     <div id="actionWrap" class="hud action hidden">
-      <button id="actionBtn"><span id="actionLabel">E 길게 눌러 스캔</span><i id="actionProgress"></i></button>
+      <button id="actionBtn"><span id="actionLabel">E 길게 눌러 조사</span><i id="actionProgress"></i></button>
     </div>
     <div id="toast" role="status" aria-live="polite"></div>
 
     <div id="touch" class="hidden">
       <div class="touch-drive"><button data-key="ArrowUp">▲</button><div><button data-key="ArrowLeft">◀</button><button data-key="ArrowDown">▼</button><button data-key="ArrowRight">▶</button></div></div>
+      <button id="touchBoost" class="touch-boost" data-key="ShiftLeft">BOOST</button>
       <button id="touchAction" class="touch-action">행동</button>
     </div>
 
     <section id="help" class="modal hidden">
-      <div class="panel help-panel"><button id="closeHelp" class="close">×</button><div class="eyebrow">ROVER MANUAL</div><h2>조작 안내</h2><div class="key-grid"><kbd>W / ↑</kbd><span>전진</span><kbd>S / ↓</kbd><span>후진</span><kbd>A D / ← →</kbd><span>조향</span><kbd>SPACE</kbd><span>제동</span><kbd>E (길게)</kbd><span>목표 행동</span></div><p>노란 표식을 따라가십시오. 배터리가 소진되면 비상 전력으로 마지막 안전 지점에 복귀합니다.</p></div>
+      <div class="panel help-panel"><button id="closeHelp" class="close">×</button><div class="eyebrow">ROVER MANUAL</div><h2>조작 안내</h2><div class="key-grid"><kbd>W / ↑</kbd><span>전진</span><kbd>S / ↓</kbd><span>후진</span><kbd>A D / ← →</kbd><span>조향</span><kbd>SHIFT</kbd><span>30 m/s 부스트</span><kbd>SPACE</kbd><span>강한 제동</span><kbd>E (길게)</kbd><span>현장 조사</span><kbd>C</kbd><span>탐사 도감</span></div><p>아케이드 탐사 주행 모드입니다. 노란 현장 표식을 따라가십시오. 배터리가 소진되면 비상 전력으로 마지막 안전 지점에 복귀합니다.</p></div>
     </section>
   </main>
-  <script type="module" src="./app.js?v=3"></script>
+  <script type="module" src="./app.js?v=5"></script>
 </body>
 </html>
